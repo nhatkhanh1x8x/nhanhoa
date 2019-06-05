@@ -2,7 +2,6 @@ Mục lục
 1. Ảo hóa KVM/QEMU
 1.1. Giới thiệu
 1.2. Các tính năng của ảo hóa KVM
-1.3. Cấu trúc ảo hóa KVM kết hợp QEMU
 2. Cài đặt KVM
 2.1. Kiểm tra cấu hình hệ thống và cài đặt
 2.2. Cấu hình
@@ -19,36 +18,45 @@ KVM hiện nay được thiết kế để giao tiếp với các hạt nhân th
 
 Trong kiến trúc của KVM, Virtual machine được thực hiện như là quy trình xử lý thông thường của Linux, được lập lịch hoạt động như các scheduler tiểu chuẩn của Linux. Trên thực tế, mỗi CPU ảo hoạt động như một tiến trình xử lý của Linux. Điều này cho phép KVM được hưởng lợi từ tất cả các tính năng của nhân Linux.
 
-
-
-Kiến trúc KVM
-
 1.2. Các tính năng của ảo hóa KVM
-1.2.1.	Security – Bảo mật
--	Vì Virtual machine được coi như một tiến trình xử lý của Linux, nên nó tận dụng được mô hình bảo mật tiêu chuẩn của Linux để cung cấp khả năng điều khiển và cô lập tài nguyên. Nhân Linux sử dụng SELinux (Security-Enhanced Linux) để thêm quyền điều khiển truy cập, bảo mật đa mức và bảo mật đa tiêu chí, và thực thi các chính sách bắt buộc. SELinux cung cấp cơ chế cách ly tài nguyên nghiêm ngặt và hạn chế cho các tiến trình chạy trong nhân Linux.
+KVM là một phần của Linux, đồng thời Linux cũng là một phần của KVM. Mọi tính năng Linux có KVM cũng có. Nhưng có những tính năng cụ thể làm cho KVM trở thành một trình ảo hóa ưa thích của doanh nghiệp.
 
--	Ngoài ra, dự án Svirt tích hợp bảo mật Mandatory Access Control (MAC) với KVM – xây dựng trên SELinux để cung cấp một nền tảng ảo hóa cho phép người quản trị định nghĩa các chính sách cho sự cô lập máy ảo. Svirt đảm bảo máy ảo không thể bị truy cập bởi các tiến trình khác (hoặc máy ảo khác), việc này có thể được mở rộng thêm bởi người quản trị hệ thống định nghĩa ra các quyền hạn đặc biệt: như là nhóm các máy ảo chia sẻ chung nguồn tài nguyên.
+* Bảo mật	
+KVM sử dụng kết hợp Linux tăng cường bảo mật (SELinux) và ảo hóa bảo mật (sVirt) để tăng cường bảo mật và cách ly VM. SELinux thiết lập ranh giới bảo mật xung quanh máy ảo. sVirt mở rộng khả năng của SELinux, cho phép bảo mật Kiểm soát truy cập bắt buộc (MAC) được áp dụng cho máy ảo khách và ngăn ngừa lỗi ghi nhãn thủ công.
+* Lưu trữ	
+KVM có thể sử dụng bất kỳ bộ lưu trữ nào được Linux hỗ trợ, bao gồm một số đĩa cục bộ và bộ lưu trữ gắn mạng (NAS).
+KVM cũng hỗ trợ các hệ thống tệp được chia sẻ để hình ảnh ảo hóa có thể được chia sẻ bởi nhiều máy chủ.
+* Hỗ trợ phần cứng
+KVM có thể sử dụng nhiều nền tảng phần cứng được chứng nhận hỗ trợ Linux.
+* Quản lý bộ nhớ	
+KVM kế thừa các tính năng quản lý bộ nhớ của Linux, bao gồm truy cập bộ nhớ không đồng nhất và hợp nhất kernel cùng trang. Bộ nhớ của ảo hóa có thể được hoán đổi, được hỗ trợ bởi khối lượng lớn để có hiệu suất tốt hơn và được chia sẻ hoặc sao lưu bởi một tệp đĩa.
+* Di chuyển ảo hóa trực tiếp	
+KVM hỗ trợ di chuyển ảo hóa trực tiếp, đó là di chuyển một chương trình ảo hóa đang chạy giữa các máy chủ vật lý mà không bị gián đoạn dịch vụ. Ảo hóa vẫn được bật, các kết nối mạng vẫn hoạt động và các ứng dụng tiếp tục chạy trong khi VM được di chuyển. KVM cũng lưu trạng thái hiện tại của ảo hóa để có thể lưu trữ và tiếp tục lại sau này.
+* Hiệu suất và khả năng mở rộng	
+KVM kế thừa hiệu năng của Linux, mở rộng để phù hợp với tải nhu cầu nếu số lượng máy khách và yêu cầu tăng lên. KVM cho phép khối lượng công việc ứng dụng đòi hỏi khắt khe nhất được ảo hóa và là cơ sở cho nhiều thiết lập ảo hóa doanh nghiệp, chẳng hạn như trung tâm dữ liệu và đám mây riêng.
+* Độ trễ thấp hơn	
+Linux có các phần mở rộng thời gian thực cho phép các ứng dụng dựa trên ảo hóa chạy ở độ trễ thấp hơn với mức độ ưu tiên tốt hơn. Đồng thời cũng phân chia các quá trình đòi hỏi thời gian tính toán dài thành các thành phần nhỏ hơn, sau đó được lên lịch và xử lý tương ứng.
+* Quản lý với KVM	
 
-1.2.2.	Memory management – Quản lý bộ nhớ
--	KVM thừa kế tính năng quản lý bộ nhớ mạnh mẽ của Linux. Vùng nhớ của máy ảo được lưu trữ trên cùng một vùng nhớ dành cho các tiến trình Linux khác và có thể swap. KVM hỗ trợ NUMA (Non-Uniform Memory Access - bộ nhớ thiết kế cho hệ thống đa xử lý) cho phép tận dụng hiệu quả vùng nhớ kích thước lớn.
+Với KVM có thể quản lý thủ công một số chương trình ảo hóa được kích hoạt trên một máy trạm mà không cần công cụ quản lý.
+Các doanh nghiệp lớn sử dụng phần mềm quản lý ảo hóa có giao diện với môi trường ảo và phần cứng vật lý cơ bản để đơn giản hóa việc quản trị tài nguyên, tăng cường phân tích dữ liệu và hợp lý hóa các hoạt động.
 
--	KVM hỗ trợ các tính năng ảo của mới nhất từ các nhà cung cấp CPU như EPT (Extended Page Table) của Microsoft, Rapid Virtualization Indexing (RVI) của AMD để giảm thiểu mức độ sử dụng CPU và cho thông lượng cao hơn.
 
--	Việc chia sẻ bộ nhớ được hỗ trợ thông qua một tính năng của nhân gọi là Kernel Same-page Merging (KSM). KSM quét tất cả các yêu cầu về vùng nhớ cần thiết cho máy ảo và định danh cho từng máy ảo, sau đó tổ hợp vào thành một yêu cầu về vùng nhớ duy nhất để chia sẻ chung cho các máy ảo, lưu trữ vào một bản copy.
+2. Các bước cài đặt thiết lập hệ thống ảo hóa KVM
 
-1.2.3.	Storage – Lưu trữ
--	KVM sử dụng khả năng lưu trữ hỗ trợ bởi Linux để lưu trữ các images máy ảo, bao gồm các local dish với chuẩn IDE, SCSI và SATA, Network Attached Storage (NAS) bao gồm NFS và SAMBA/CIFS, hoặc SAN được hỗ trợ iSCSI và Fibre Chanel.
-
--	Một lần nữa, bởi vì KVM là một phần trong nhân Linux, nên nó có thể tận dụng hạ tầng lưu trữ đã được chứng minh và đáng tin cậy với sự hỗ trợ từ tất cả các nhà cung cấp hàng đầu trong lĩnh vực Storage.
-
--	KVM cũng hỗ trợ các image của máy ảo trên hệ thống chia sẻ tập tin như GFS2 cho phép các image máy ảo được chia sẻ giữa các host hoặc các logical volumn.
-
--	Định dạng image tự nhiên của KVM là QCOW2 – hỗ trợ việc snapshot cho phép snapshot nhiều mức, nén và mã hóa dữ liệu.
-
-1.2.4.	Live migration
--	KVM hỗ trợ live migration cung cấp khả năng di chuyển ác máy ảo đang chạy giữa các host vật lý mà không làm gián đoạn dịch vụ. Khả năng live migration là trong suốt với người dùng, các máy ảo vẫn duy trì trạng thái bật, kết nối mạng vẫn đảm bảo và các ứng dụng của người dùng vẫn tiếp tục duy trì trong khi máy ảo được đưa sang một host vật lý mới.
-
--	KVM cũng cho phép lưu lại trạng thái hiện tại của máy ảo để cho phép lưu trữ và khôi phục trạng thái đó vào lần sử dụng tiếp theo.
-
-1.2.5.	Performance and scalability
-KVM kế thừa hiệu năng và khả năng mở rộng của Linux, hỗ trợ các máy ảo với 16 CPUs ảo, 256GB RAM và hệ thống máy chủ lên tới 256 cores và trên 1TB RAM.
+Với các ưu điểm về nguồn mở, tính ổn định, hiệu suất cao, việc triển khai KVM ở quy mô nhỏ cũng hoàn toàn dễ dàng và phù hợp với các môi trường SMB. Để thiết lập và quản trị một hệ thống ảo hóa KVM có thể thực hiện thông qua 5 thao tác cơ bản sau:
+B1. Cài đặt HĐH Linux cho máy chủ.
+HĐH thông thường được lựa chọn là CentOS (6.x, 7.x) hoặc Ubuntu, Debian. Bước này yêu cầu máy chủ phải hỗ trợ công nghệ ảo hóa.
+Để khai thác hiệu quả tài nguyên, hệ điều hành được cài đặt trên máy chủ được khuyến cáo sử dụng bản “Minimal” – đây là bản đã được tinh giảm, chỉ giữ lại những thành phần cần thiết cho một máy chủ.
+Máy chủ phải được thiết lập địa chỉ IP tĩnh để thuận tiện trong quản trị và giám sát.
+B2. Cài đặt Hypervisor KVM lên máy chủ
+Cài đặt các phần mềm cần thiết cho KVM Hypervisor, bao gồm các thành phần chính sau: kvm qemu-kvm libvirt bridge-utils.
+Khởi động các dịch vụ liên quan như libvirtd và messagebus
+#/etc/rc.d/init.d/libvirtd start
+#/etc/rc.d/init.d/messagebus start
+# …
+B3. Cài đặt phần mềm Virtual Machine Manager trên máy Linux Client (CentOS)
+Tiến hành cài đặt phần mềm Virtual Machine Manager trên 01 máy Linux để quản trị các máy chủ KVM – Hypervisor
+Trên HĐH CentOS sử dụng lệnh sau để cài đặt: #yum install virt-manager
+B4. Quản trị KVM host (Máy chủ) bằng phần mềm Virtual Machine Manager trên máy Client (CentOS)
+VMM cho phép thực hiện các thao tác quản trị máy ảo như: tạo máy ảo, thay đổi máy ảo (sửa, xóa, nâng cấp phần cứng), quản trị thông qua command-line, …
